@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: myYFinance
+Version: 0.1.1
+Summary: my yfinance
+Home-page: 
+Author: Oliver Rudow
+Author-email: oliver.rudow@googlemail.com
+Requires-Dist: pandas
+Requires-Dist: yfinance
+Dynamic: author
+Dynamic: author-email
+Dynamic: requires-dist
+Dynamic: summary

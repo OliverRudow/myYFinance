@@ -1,0 +1,8 @@
+setup.py
+myYFinance.egg-info/PKG-INFO
+myYFinance.egg-info/SOURCES.txt
+myYFinance.egg-info/dependency_links.txt
+myYFinance.egg-info/requires.txt
+myYFinance.egg-info/top_level.txt
+yfinance_me/__init__.py
+yfinance_me/myYFinance.py
