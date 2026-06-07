@@ -13,13 +13,19 @@ import dataclasses
 import operator
 from datetime import datetime, date
 from typing import Optional
+
+import yfinance
 import yfinance as yf
 import pandas as pd
 import math
 from yfinance import utils as yf_utils
 from tuple_me import myTuple
-from watchlist_definition_me import (myStaticWatchListDefinitions, myPerformanceWatchListDefinitions, myAnalystWatchListDefinitions,
-                          myFundamentalsWatchListDefinitions, myDerivateWatchListDefinitions)
+from watchlist_definition_me import (myStaticWatchListDefinitions,
+                                     myPerformanceWatchListDefinitions,
+                                     myAnalystWatchListDefinitions,
+                                     myFundamentalsWatchListDefinitions,
+                                     myDerivateWatchListDefinitions,
+                                     myCalendarWatchListDefinitions)
 
 LIST_ALLOWED_QUOTE_TYPES: list[str] = ['EQUITY']
 
@@ -116,7 +122,8 @@ class MyYFinance:
     """
     _index_tuple: myTuple.MyTuple = dataclasses.field(repr=False, default=type(myTuple.MyTuple))
 
-    _dict_static_watch_list_data: dict[str, str | bool] = dataclasses.field(default_factory=dict)
+    # output dicts
+    _dict_static_watch_list_data: dict[str, str | bool | None] = dataclasses.field(default_factory=dict)
 
     _dict_performance_watch_list_data: dict[str, str | int | float | None] = dataclasses.field(default_factory=dict)
 
@@ -125,6 +132,23 @@ class MyYFinance:
     _dict_fundamentals_watch_list_data: dict[str, str | int | float | None] = dataclasses.field(default_factory=dict)
 
     _dict_derivate_watch_list_data: dict[str, str | int | float | None] = dataclasses.field(default_factory=dict)
+
+    _dict_calendar_watch_list_data: dict[str, str | int | None] = dataclasses.field(default_factory=dict)
+
+    # yfinance parameter
+    _ticker_y_finance: yfinance.Ticker = dataclasses.field(repr=False, default=yfinance.Ticker)
+
+    _ticker_info: dict = dataclasses.field(default_factory=dict)
+
+    _ticker_eps_revisions: pd.DataFrame = dataclasses.field(default_factory=pd.DataFrame)
+
+    _ticker_history: pd.DataFrame = dataclasses.field(default_factory=pd.DataFrame)
+
+    _ticker_earning_estimate: pd.DataFrame = dataclasses.field(default_factory=pd.DataFrame)
+
+    _ticker_calendar: dict = dataclasses.field(default_factory=dict)
+
+    _bool_ticker_info: bool = dataclasses.field(repr=False, default=False)
 
     # static watch list
     _str_actual_quote_isin: str = dataclasses.field(repr=False, default='')
@@ -287,17 +311,20 @@ class MyYFinance:
 
     _held_percent_institutions: str | float = dataclasses.field(repr=False, default=0.0)
 
-    _ticker_y_finance:  yf.ticker.Ticker = dataclasses.field(repr=False, default=yf.ticker.Ticker)
+    # calendar
+    _str_dividend_date: str = dataclasses.field(repr=False, default='')
 
-    _ticker_info: dict = dataclasses.field(repr=False, default=dict)
+    _int_dividend_delta_date: int = dataclasses.field(repr=False, default=0)
 
-    _ticker_history: pd.DataFrame = dataclasses.field(repr=False, default=pd.DataFrame)
+    _str_ex_dividend_date: str = dataclasses.field(repr=False, default='')
 
-    _ticker_earning_estimate: pd.DataFrame = dataclasses.field(repr=False, default=pd.DataFrame)
+    _int_ex_dividend_delta_date: int = dataclasses.field(repr=False, default=0)
 
-    _ticker_eps_revisions: pd.DataFrame = dataclasses.field(repr=False, default=pd.DataFrame)
+    _str_earnings_date: str = dataclasses.field(repr=False, default='')
 
-    _bool_ticker_info: bool = dataclasses.field(repr=False, default=False)
+    _int_earnings_delta_date: int = dataclasses.field(repr=False, default=0)
+
+    _today: date = dataclasses.field(repr=False, default=date)
 
     def __init__(self) -> None:
 
@@ -318,7 +345,11 @@ class MyYFinance:
 
         self._dict_derivate_watch_list_data = myDerivateWatchListDefinitions.init_dict_derivate_watch_list_data()
 
+        self._dict_calendar_watch_list_data = myCalendarWatchListDefinitions.init_dict_calendar_watch_list_data()
+
         self._str_actual_quote_isin = ''
+
+        self._today = date.today()
 
     def __repr__(self) -> str | dict:
 
@@ -338,7 +369,7 @@ class MyYFinance:
         return self._str_actual_quote_isin
 
     @property
-    def get_actual_quote_dict_static_watch_list_data(self) -> dict[str, str | bool]:
+    def get_actual_quote_dict_static_watch_list_data(self) -> dict[str, str | bool | None]:
 
         self._get_quote_static_watch_list_data_from_yfinance()
 
@@ -369,6 +400,12 @@ class MyYFinance:
 
         return self._dict_derivate_watch_list_data
 
+    @property
+    def get_actual_quote_dict_calendar_watch_list_data(self) -> dict[str, str | int | None]:
+        self._get_quote_calendar_watch_list_data_from_yfinance()
+
+        return self._dict_calendar_watch_list_data
+
     def _get_quote_ticker_data_from_yfinance(self)-> None:
 
         if self._str_actual_quote_isin != '':
@@ -397,6 +434,8 @@ class MyYFinance:
 
                         self._ticker_earning_estimate = self._ticker_y_finance.earnings_estimate
 
+                        self._ticker_calendar = self._ticker_y_finance.get_calendar()
+
                         self._bool_ticker_info = True
 
                     else:
@@ -407,9 +446,19 @@ class MyYFinance:
 
                         self._ticker_earning_estimate = pd.DataFrame()
 
+                        self._ticker_calendar = {}
+
                 else:
 
                     self._bool_ticker_info = False
+
+                    self._ticker_eps_revisions = pd.DataFrame()
+
+                    self._ticker_history = pd.DataFrame()
+
+                    self._ticker_earning_estimate = pd.DataFrame()
+
+                    self._ticker_calendar = {}
 
                     print('--- Value Error in ISIN, no data found !---')
 
@@ -417,11 +466,31 @@ class MyYFinance:
 
                 self._bool_ticker_info = False
 
+                self._ticker_info = {}
+
+                self._ticker_eps_revisions = pd.DataFrame()
+
+                self._ticker_history = pd.DataFrame()
+
+                self._ticker_earning_estimate = pd.DataFrame()
+
+                self._ticker_calendar = {}
+
                 print('--- Value Error: ISIN corrupt!---')
 
         else:
 
             self._bool_ticker_info = False
+
+            self._ticker_info = {}
+
+            self._ticker_eps_revisions = pd.DataFrame()
+
+            self._ticker_history = pd.DataFrame()
+
+            self._ticker_earning_estimate = pd.DataFrame()
+
+            self._ticker_calendar = {}
 
     def _get_quote_static_watch_list_data_from_yfinance(self) -> None:
 
@@ -1958,6 +2027,112 @@ class MyYFinance:
                 myDerivateWatchListDefinitions.TUPLE_DERIVATE_WATCH_LIST_HELD_PERCENT_INSTITUTIONS[
                     self._index_tuple.OPTION_NAME]] = self._held_percent_institutions
 
+    def _get_quote_calendar_watch_list_data_from_yfinance(self) -> None:
+
+        if not self._bool_ticker_info:
+
+            self._get_quote_ticker_data_from_yfinance()
+
+        self._dict_calendar_watch_list_data[
+            myCalendarWatchListDefinitions.TUPLE_CALENDAR_WATCH_LIST_QUOTE_ISIN[
+                self._index_tuple.OPTION_NAME]] = self._str_actual_quote_isin
+
+        if 'Dividend Date' in self._ticker_calendar.keys():
+
+            _dividend_date = self._ticker_calendar['Dividend Date']
+
+            if isinstance(_dividend_date, date):
+
+                self._str_dividend_date = _dividend_date.strftime('%Y-%m-%d')
+
+                _delta = _dividend_date - self._today
+
+                self._int_dividend_date = _delta.days
+
+            else:
+
+                self._str_dividend_date = ''
+
+                self._int_dividend_date = ''
+
+            self._dict_calendar_watch_list_data[
+                myCalendarWatchListDefinitions.TUPLE_CALENDAR_WATCH_LIST_DIVIDEND_DATE[
+                    self._index_tuple.OPTION_NAME]] = self._str_dividend_date
+
+            self._dict_calendar_watch_list_data[
+                myCalendarWatchListDefinitions.TUPLE_CALENDAR_WATCH_LIST_DIVIDEND_DELTA_DATE[
+                    self._index_tuple.OPTION_NAME]] = self._int_dividend_date
+
+        if 'Ex-Dividend Date' in self._ticker_calendar.keys():
+
+            _ex_dividend_date = self._ticker_calendar['Ex-Dividend Date']
+
+            if isinstance(_ex_dividend_date, date):
+
+                self._str_ex_dividend_date = _ex_dividend_date.strftime('%Y-%m-%d')
+
+                _delta = _ex_dividend_date -  self._today
+
+                self._int_ex_dividend_date = _delta.days
+
+            else:
+
+                self._str_ex_dividend_date = ''
+
+                self._int_ex_dividend_date = ''
+
+            self._dict_calendar_watch_list_data[
+                myCalendarWatchListDefinitions.TUPLE_CALENDAR_WATCH_LIST_EX_DIVIDEND_DATE[
+                    self._index_tuple.OPTION_NAME]] = self._str_ex_dividend_date
+
+            self._dict_calendar_watch_list_data[
+                myCalendarWatchListDefinitions.TUPLE_CALENDAR_WATCH_LIST_EX_DIVIDEND_DELTA_DATE[
+                    self._index_tuple.OPTION_NAME]] = self._int_ex_dividend_date
+
+        if 'Earnings Date' in self._ticker_calendar.keys():
+
+            _earnings_date = self._ticker_calendar['Earnings Date']
+
+            if isinstance(_earnings_date, date):
+
+                self._str_earnings_date = _earnings_date.strftime('%Y-%m-%d')
+
+                _delta =  _earnings_date - self._today
+
+                self._int_earnings_date = _delta.days
+
+            elif isinstance(_earnings_date, list):
+
+                if _earnings_date.__len__() == 0:
+
+                    self._str_earnings_date = ''
+
+                    self._int_earnings_date = ''
+
+                elif _earnings_date.__len__() == 1:
+
+                    _earnings_date = _earnings_date[0]
+
+                    self._str_earnings_date = _earnings_date.strftime('%Y-%m-%d')
+
+                    _delta =  _earnings_date - self._today
+
+                    self._int_earnings_date = _delta.days
+
+            else:
+
+                self._str_earnings_date = ''
+
+                self._int_earnings_date = ''
+
+            self._dict_calendar_watch_list_data[
+                myCalendarWatchListDefinitions.TUPLE_CALENDAR_WATCH_LIST_EARNINGS_DATE[
+                    self._index_tuple.OPTION_NAME]] = self._str_earnings_date
+
+            self._dict_calendar_watch_list_data[
+                myCalendarWatchListDefinitions.TUPLE_CALENDAR_WATCH_LIST_EARNINGS_DELTA_DATE[
+                    self._index_tuple.OPTION_NAME]] = self._int_earnings_date
+
 
 if __name__ == "__main__":
     my_y_fiance = MyYFinance()
@@ -1975,3 +2150,5 @@ if __name__ == "__main__":
     print(my_y_fiance.get_actual_quote_dict_fundamentals_watch_list_data)
     print('-------------------------------------------------')
     print(my_y_fiance.get_actual_quote_dict_derivate_watch_list_data)
+    print('-------------------------------------------------')
+    print(my_y_fiance.get_actual_quote_dict_calendar_watch_list_data)
