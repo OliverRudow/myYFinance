@@ -52,7 +52,7 @@ def calc_weighted_revisions_index(pd_revision_data: pd.DataFrame) -> str | list:
 
             up_last_7_days = dict_rev_data['upLast7days']
 
-            down_last_7_days = dict_rev_data['downLast7days']
+            down_last_7_days = dict_rev_data['downLast7Days']
 
             if isinstance(up_last_7_days, int | float) and isinstance(down_last_7_days, int | float):
 
