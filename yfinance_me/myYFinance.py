@@ -1,7 +1,7 @@
 """myYFinance.py."""
 
 __title__: str = "myYFinance"
-__version__: str = "0.1.1"
+__version__: str = "0.1.2"
 __author__: str = "Oliver Rudow"
 __email__: str = "oliver.rudow@googlemail.com"
 __copyright__: str = "Copyright 2026, Brain Center Höfen"
@@ -13,7 +13,6 @@ import dataclasses
 import operator
 from datetime import datetime, date
 from typing import Optional
-
 import yfinance
 import yfinance as yf
 import pandas as pd
@@ -51,13 +50,37 @@ def calc_weighted_revisions_index(pd_revision_data: pd.DataFrame) -> str | list:
 
             dict_rev_data = row.to_dict()
 
-            _numerator_7_days = dict_rev_data['upLast7days'] - dict_rev_data['downLast7Days']
+            up_last_7_days = dict_rev_data['upLast7days']
 
-            _numerator_30_days = dict_rev_data['upLast30days'] - dict_rev_data['downLast30days']
+            down_last_7_days = dict_rev_data['downLast7days']
 
-            _denominator_7_days = dict_rev_data['upLast7days'] + dict_rev_data['downLast7Days']
+            if isinstance(up_last_7_days, int | float) and isinstance(down_last_7_days, int | float):
 
-            _denominator_30_days = dict_rev_data['upLast30days'] + dict_rev_data['downLast30days']
+                _numerator_7_days = up_last_7_days - down_last_7_days
+
+                _denominator_7_days = up_last_7_days + down_last_7_days
+
+            else:
+
+                _numerator_7_days = 0
+
+                _denominator_7_days = 0
+
+            up_last_30_days = dict_rev_data['upLast30days']
+
+            down_last_30_days = dict_rev_data['downLast30days']
+
+            if isinstance(up_last_30_days, int | float) and isinstance(down_last_30_days, int | float):
+
+                _numerator_30_days = up_last_30_days - down_last_30_days
+
+                _denominator_30_days = up_last_30_days + down_last_30_days
+
+            else:
+
+                _numerator_30_days = 0
+
+                _denominator_30_days = 0
 
             if _denominator_7_days != 0:
 
@@ -1582,6 +1605,7 @@ class MyYFinance:
                 else:
 
                     _surprise_count_row = ''
+
                     _surprise_cross_sum = ''
 
                 self._dict_fundamentals_watch_list_data[
@@ -2113,11 +2137,46 @@ class MyYFinance:
 
                     _earnings_date = _earnings_date[0]
 
-                    self._str_earnings_date = _earnings_date.strftime('%Y-%m-%d')
+                    if isinstance(_earnings_date, date):
 
-                    _delta =  _earnings_date - self._today
+                        self._str_earnings_date = _earnings_date.strftime('%Y-%m-%d')
 
-                    self._int_earnings_date = _delta.days
+                        _delta =  _earnings_date - self._today
+
+                        self._int_earnings_date = _delta.days
+
+                    else:
+
+                        self._str_earnings_date = ''
+
+                        self._int_earnings_date = ''
+
+                else:
+
+                    _list_delta_earnings_date = []
+
+                    for elem in _earnings_date:
+
+                        if isinstance(elem, date):
+
+                            _delta = elem - self._today
+
+                            _list_delta_earnings_date.append(_delta.days)
+
+                    if _list_delta_earnings_date.__len__() > 0:
+
+                        minimum = min(_list_delta_earnings_date)
+                        index_minimums = _list_delta_earnings_date.index(minimum)
+
+                        self._str_earnings_date = _earnings_date[index_minimums].strftime('%Y-%m-%d')
+
+                        self._int_earnings_date = minimum
+
+                    else:
+
+                        self._str_earnings_date = ''
+
+                        self._int_earnings_date = ''
 
             else:
 
