@@ -1,7 +1,7 @@
 """myYFinance.py."""
 
 __title__: str = "myYFinance"
-__version__: str = "0.1.2"
+__version__: str = "0.3.0"
 __author__: str = "Oliver Rudow"
 __email__: str = "oliver.rudow@googlemail.com"
 __copyright__: str = "Copyright 2026, Brain Center Höfen"
@@ -14,17 +14,16 @@ import operator
 from datetime import datetime, date
 from typing import Optional
 import yfinance
-import yfinance as yf
 import pandas as pd
 import math
 from yfinance import utils as yf_utils
-from tuple_me import myTuple
-from watchlist_definition_me import (myStaticWatchListDefinitions,
-                                     myPerformanceWatchListDefinitions,
-                                     myAnalystWatchListDefinitions,
-                                     myFundamentalsWatchListDefinitions,
-                                     myDerivateWatchListDefinitions,
-                                     myCalendarWatchListDefinitions)
+from mytuple import myTuple
+from mysharesdefinition import (myStaticWatchListDefinitions,
+                                myPerformanceWatchListDefinitions,
+                                myAnalystWatchListDefinitions,
+                                myFundamentalsWatchListDefinitions,
+                                myDerivateWatchListDefinitions,
+                                myCalendarWatchListDefinitions)
 
 LIST_ALLOWED_QUOTE_TYPES: list[str] = ['EQUITY']
 
@@ -437,7 +436,7 @@ class MyYFinance:
 
                 if yf_utils.get_ticker_by_isin(self._str_actual_quote_isin) != '':
 
-                    self._ticker_y_finance = yf.Ticker(self._str_actual_quote_isin)
+                    self._ticker_y_finance = yfinance.Ticker(self._str_actual_quote_isin)
 
                     self._ticker_info = self._ticker_y_finance.get_info()
 

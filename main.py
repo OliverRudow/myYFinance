@@ -1,5 +1,5 @@
 # This is a sample Python script.
-from yfinance_me import myYFinance
+from myyfinance import myYFinance
 
 
 # Press ⌃R to execute it or replace it with your code.
