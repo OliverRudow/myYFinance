@@ -27,5 +27,7 @@ if __name__ == '__main__':
     print(my_y_fiance.get_actual_quote_dict_fundamentals_watch_list_data)
     print('-------------------------------------------------')
     print(my_y_fiance.get_actual_quote_dict_derivate_watch_list_data)
+    print('-------------------------------------------------')
+    print(my_y_fiance.get_actual_quote_dict_calendar_watch_list_data)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
