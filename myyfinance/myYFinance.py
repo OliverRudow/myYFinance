@@ -142,7 +142,7 @@ class MyYFinance:
     """
 
     """
-    _index_tuple: myTuple.MyTuple = dataclasses.field(repr=False, default=type(myTuple.MyTuple))
+    _index_tuple: myTuple.MyTuple = dataclasses.field(repr=False, default_factory=type(myTuple.MyTuple))
 
     # output dicts
     _dict_static_watch_list_data: dict[str, str | bool | None] = dataclasses.field(default_factory=dict)
@@ -158,7 +158,7 @@ class MyYFinance:
     _dict_calendar_watch_list_data: dict[str, str | int | None] = dataclasses.field(default_factory=dict)
 
     # yfinance parameter
-    _ticker_y_finance: yfinance.Ticker = dataclasses.field(repr=False, default=yfinance.Ticker)
+    _ticker_y_finance: yfinance.Ticker = dataclasses.field(repr=False, default_factory=type(yfinance.Ticker))
 
     _ticker_info: dict = dataclasses.field(default_factory=dict)
 
@@ -267,7 +267,7 @@ class MyYFinance:
 
     _weighted_reversion_index: str | float = dataclasses.field(repr=False, default=0.0)
 
-    _list_revision_index: str | list = dataclasses.field(repr=False, default=list)
+    _list_revision_index: str | list = dataclasses.field(repr=False, default_factory=list)
 
     # fundamentals
     _trailing_eps: str | float = dataclasses.field(repr=False, default=0.0)
@@ -346,7 +346,7 @@ class MyYFinance:
 
     _int_earnings_delta_date: int = dataclasses.field(repr=False, default=0)
 
-    _today: date = dataclasses.field(repr=False, default=date)
+    _today: date = dataclasses.field(repr=False, default_factory=type(date))
 
     def __init__(self) -> None:
 
@@ -373,7 +373,7 @@ class MyYFinance:
 
         self._today = date.today()
 
-    def __repr__(self) -> str | dict:
+    def __repr__(self) -> dict:
 
         return self._dict_static_watch_list_data
 
