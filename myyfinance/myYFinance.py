@@ -187,8 +187,6 @@ class MyYFinance:
 
     _str_quote_currency: str = dataclasses.field(repr=False, default='')
 
-    _bool_actual_quote_invest_status: bool = dataclasses.field(repr=False, default=False)
-
     # performance watch list
     _float_quote_ask: float | str = dataclasses.field(repr=False, default=0.0)
 
@@ -379,9 +377,6 @@ class MyYFinance:
 
     def set_actual_quote_isin(self, str_actual_quote_isin: str) -> None:
         self._str_actual_quote_isin = str_actual_quote_isin
-
-    def set_actual_quote_invest_status(self, bool_actual_quote_invest_status: bool) -> None:
-        self._bool_actual_quote_invest_status = bool_actual_quote_invest_status
 
     def get_actual_quote_ticker_data_from_y_finance(self) -> None:
         self._get_quote_ticker_data_from_yfinance()
@@ -597,9 +592,6 @@ class MyYFinance:
 
             self._dict_static_watch_list_data[myStaticWatchListDefinitions.TUPLE_STATIC_WATCH_LIST_QUOTE_CURRENCY[
                 self._index_tuple.OPTION_NAME]] = self._str_quote_currency
-
-            self._dict_static_watch_list_data[myStaticWatchListDefinitions.TUPLE_STATIC_WATCH_LIST_QUOTE_INVEST_STATUS[
-                    self._index_tuple.OPTION_NAME]] = self._bool_actual_quote_invest_status
 
     def _get_quote_performance_watch_list_data_from_yfinance(self) -> None:
 
@@ -2197,7 +2189,6 @@ if __name__ == "__main__":
     str_isin = 'US0378331005'
     # str_isin = 'NL0011683594'
     # str_isin = 'DE000A11QW68'
-    my_y_fiance.set_actual_quote_invest_status(True)
     my_y_fiance.set_actual_quote_isin(str_isin)
     print(my_y_fiance.get_actual_quote_dict_static_watch_list_data)
     print('-------------------------------------------------')

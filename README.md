@@ -10,8 +10,6 @@ This module is designed to work as part of a multi-file package architecture:
 your_package/
 ├── __init__.py
 ├── myYFinance.py                          # This module (Data retrieval & processing)
-├── mytuple.py                             # Defines myTuple/MyTuple data structures
-└── mysharesdefinition.py                  # Defines various WatchListDefinitions structures
 ```
 
 ## Features
