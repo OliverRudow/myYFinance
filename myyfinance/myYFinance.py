@@ -371,12 +371,21 @@ class MyYFinance:
 
         self._today = date.today()
 
+        # yfinance parameter
+        self._ticker_calendar = {}
+
+        # analyst watch list
+        self._list_revision_index = []
+
     def __repr__(self) -> dict:
 
         return self._dict_static_watch_list_data
 
     def set_actual_quote_isin(self, str_actual_quote_isin: str) -> None:
+
         self._str_actual_quote_isin = str_actual_quote_isin
+
+        self._bool_ticker_info = False
 
     def get_actual_quote_ticker_data_from_y_finance(self) -> None:
         self._get_quote_ticker_data_from_yfinance()
@@ -384,6 +393,10 @@ class MyYFinance:
     @property
     def get_actual_quote_isin(self) -> str:
         return self._str_actual_quote_isin
+
+    @property
+    def get_actual_quote_ticker_info(self) -> dict[str, str | int | float | None]:
+        return self._ticker_info
 
     @property
     def get_actual_quote_dict_static_watch_list_data(self) -> dict[str, str | bool | None]:
@@ -431,9 +444,19 @@ class MyYFinance:
 
                 if yf_utils.get_ticker_by_isin(self._str_actual_quote_isin) != '':
 
-                    self._ticker_y_finance = yfinance.Ticker(self._str_actual_quote_isin)
+                    try:
 
-                    self._ticker_info = self._ticker_y_finance.get_info()
+                        self._ticker_y_finance = yfinance.Ticker(self._str_actual_quote_isin)
+
+                        self._ticker_info = self._ticker_y_finance.get_info()
+
+                        if list(self._ticker_info.keys()).__len__() == 0 or list(self._ticker_info.keys()).__len__() == 1:
+
+                            raise ValueError
+
+                    except ValueError:
+
+                        print(f'---- Y-Finance does not provide data for ISIN {self._str_actual_quote_isin}! ----')
 
                     if 'quoteType' in self._ticker_info.keys():
 
@@ -456,6 +479,8 @@ class MyYFinance:
                         self._bool_ticker_info = True
 
                     else:
+
+                        self._bool_ticker_info = False
 
                         self._ticker_eps_revisions = pd.DataFrame()
 
@@ -592,6 +617,12 @@ class MyYFinance:
 
             self._dict_static_watch_list_data[myStaticWatchListDefinitions.TUPLE_STATIC_WATCH_LIST_QUOTE_CURRENCY[
                 self._index_tuple.OPTION_NAME]] = self._str_quote_currency
+
+            self._bool_ticker_info = True
+
+        else:
+
+            self._bool_ticker_info = False
 
     def _get_quote_performance_watch_list_data_from_yfinance(self) -> None:
 
@@ -1372,15 +1403,27 @@ class MyYFinance:
                 myAnalystWatchListDefinitions.TUPLE_ANALYST_WATCH_LIST_WEIGHTED_REVISION_TREND_CREDIT[
                     self._index_tuple.OPTION_NAME]] = self._int_revision_trend_credit
 
-            if isinstance(self._list_revision_index, list) and len(self._list_revision_index) > 0:
+            if self._list_revision_index.__len__() > 0:
 
-                self._dict_analyst_watch_list_data[
-                    myAnalystWatchListDefinitions.TUPLE_ANALYST_WATCH_LIST_WEIGHTED_REVISION_INDEX[
-                        self._index_tuple.OPTION_NAME]] = self._list_revision_index[0]
+                if isinstance(self._list_revision_index, list) and len(self._list_revision_index) > 0:
 
-                self._dict_analyst_watch_list_data[
-                    myAnalystWatchListDefinitions.TUPLE_ANALYST_WATCH_LIST_WEIGHTED_REVISION_TREND[
-                        self._index_tuple.OPTION_NAME]] = str(self._list_revision_index)
+                    self._dict_analyst_watch_list_data[
+                        myAnalystWatchListDefinitions.TUPLE_ANALYST_WATCH_LIST_WEIGHTED_REVISION_INDEX[
+                            self._index_tuple.OPTION_NAME]] = self._list_revision_index[0]
+
+                    self._dict_analyst_watch_list_data[
+                        myAnalystWatchListDefinitions.TUPLE_ANALYST_WATCH_LIST_WEIGHTED_REVISION_TREND[
+                            self._index_tuple.OPTION_NAME]] = str(self._list_revision_index)
+
+                else:
+
+                    self._dict_analyst_watch_list_data[
+                        myAnalystWatchListDefinitions.TUPLE_ANALYST_WATCH_LIST_WEIGHTED_REVISION_INDEX[
+                            self._index_tuple.OPTION_NAME]] = ''
+
+                    self._dict_analyst_watch_list_data[
+                        myAnalystWatchListDefinitions.TUPLE_ANALYST_WATCH_LIST_WEIGHTED_REVISION_TREND[
+                            self._index_tuple.OPTION_NAME]] = ''
 
             else:
 
@@ -2186,8 +2229,8 @@ class MyYFinance:
 
 if __name__ == "__main__":
     my_y_fiance = MyYFinance()
-    str_isin = 'US0378331005'
-    # str_isin = 'NL0011683594'
+    # str_isin = 'US0378331005'
+    str_isin = 'US2787681061'
     # str_isin = 'DE000A11QW68'
     my_y_fiance.set_actual_quote_isin(str_isin)
     print(my_y_fiance.get_actual_quote_dict_static_watch_list_data)
@@ -2201,3 +2244,5 @@ if __name__ == "__main__":
     print(my_y_fiance.get_actual_quote_dict_derivate_watch_list_data)
     print('-------------------------------------------------')
     print(my_y_fiance.get_actual_quote_dict_calendar_watch_list_data)
+    print('-------------------------------------------------')
+    # print(my_y_fiance.get_actual_quote_ticker_info)
