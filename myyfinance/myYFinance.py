@@ -1,7 +1,6 @@
 """myYFinance.py."""
 
 import logging
-import operator
 from datetime import datetime, date
 from typing import Optional
 
@@ -19,7 +18,7 @@ from mysharesdefinition import (myStaticWatchListDefinitions,
                                 myCalendarWatchListDefinitions)
 
 __title__: str = "myYFinance"
-__version__: str = "0.3.0"
+__version__: str = "1.0.0"
 __author__: str = "Oliver Rudow"
 __email__: str = "oliver.rudow@googlemail.com"
 __copyright__: str = "Copyright 2026, Brain Center Höfen"
@@ -950,15 +949,15 @@ if __name__ == "__main__":
     my_y_finance = MyYFinance()
     str_isin = 'US0378331005'
     my_y_finance.set_actual_quote_isin(str_isin)
-    print(my_y_finance.get_actual_quote_dict_static_watch_list_data)
+    print(f' ---- the static information is: {my_y_finance.get_actual_quote_dict_static_watch_list_data} ----')
     print('-------------------------------------------------')
-    print(my_y_finance.get_actual_quote_dict_performance_watch_list_data)
+    print(f' ---- the performance information is: {my_y_finance.get_actual_quote_dict_performance_watch_list_data} ----')
     print('-------------------------------------------------')
-    print(my_y_finance.get_actual_quote_dict_analyst_watch_list_data)
+    print(f' ---- the analyst information is: {my_y_finance.get_actual_quote_dict_analyst_watch_list_data} ----')
     print('-------------------------------------------------')
-    print(my_y_finance.get_actual_quote_dict_fundamentals_watch_list_data)
+    print(f' ---- the fundamental information is: {my_y_finance.get_actual_quote_dict_fundamentals_watch_list_data} ----')
     print('-------------------------------------------------')
-    print(my_y_finance.get_actual_quote_dict_derivate_watch_list_data)
+    print(f' ---- the derivate information is: {my_y_finance.get_actual_quote_dict_derivate_watch_list_data} ----')
     print('-------------------------------------------------')
-    print(my_y_finance.get_actual_quote_dict_calendar_watch_list_data)
+    print(f' ---- the calendar information is: {my_y_finance.get_actual_quote_dict_calendar_watch_list_data} ----')
     print('-------------------------------------------------')

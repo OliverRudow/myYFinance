@@ -1,14 +1,16 @@
 [tool.poetry]
 name = "myYFinance"
-version = "0.3.0"
+version = "1.0.0"
 description = "A robust Python class based taking stock data from yfinance and put them into dedicated dicts."
 authors = ["oliverrudow <oliver.rudow@googlemail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.14"
-yfinance = "^1.4.1"
-pandas = "^3.0.3"
+python = ">=3.14"
+yfinance = "^1.7.0"
+pandas = "^3.1.1"
+mytuple = {path = "../myTuple", develop = true}
+mysharesdefinition = {path = "../mySharesDefinition", develop = true}
 
 [build-system]
 requires = ["poetry-core"]

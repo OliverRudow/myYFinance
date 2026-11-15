@@ -71,4 +71,4 @@ print(ticker_data._dict_static_watch_list_data)
 
 © 2026, Brain Center Höfen. All rights reserved.  
 **Author:** Oliver Rudow (<oliver.rudow@googlemail.com>)  
-**Version:** 0.1.2
+**Version:** 1.0.0
