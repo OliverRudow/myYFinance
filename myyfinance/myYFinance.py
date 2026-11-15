@@ -1,21 +1,23 @@
 """myYFinance.py."""
 
 import logging
-from datetime import datetime, date
+import math
+from datetime import date, datetime
 from typing import Optional
 
-import math
 import pandas as pd
 import yfinance
 from yfinance import utils as yf_utils
 
+from mysharesdefinition import (
+    myAnalystWatchListDefinitions,
+    myCalendarWatchListDefinitions,
+    myDerivateWatchListDefinitions,
+    myFundamentalsWatchListDefinitions,
+    myPerformanceWatchListDefinitions,
+    myStaticWatchListDefinitions,
+)
 from mytuple import myTuple
-from mysharesdefinition import (myStaticWatchListDefinitions,
-                                myPerformanceWatchListDefinitions,
-                                myAnalystWatchListDefinitions,
-                                myFundamentalsWatchListDefinitions,
-                                myDerivateWatchListDefinitions,
-                                myCalendarWatchListDefinitions)
 
 __title__: str = "myYFinance"
 __version__: str = "1.0.0"
@@ -26,6 +28,17 @@ __copyright__: str = "Copyright 2026, Brain Center Höfen"
 logger: logging.Logger = logging.getLogger(__name__)
 
 LIST_ALLOWED_QUOTE_TYPES: list[str] = ['EQUITY']
+
+# Magic numbers as constants
+MAX_DELTA_DAYS: int = 365
+REVISION_WEIGHT_SHORT: int = 2
+REVISION_WEIGHT_LONG: int = 1
+REVISION_WEIGHT_DIVISOR: int = 3
+REVISION_THRESHOLD_NEGATIVE_HIGH: float = -0.5
+REVISION_THRESHOLD_NEGATIVE_LOW: float = 0.0
+REVISION_THRESHOLD_POSITIVE_LOW: float = 0.0
+REVISION_THRESHOLD_POSITIVE_HIGH: float = 0.5
+FLOAT_PRECISION: int = 2
 
 def calc_weighted_revisions_index(pd_revision_data: pd.DataFrame) -> list[float]:
     """Calculate weighted revision index from EPS revision data."""
@@ -55,17 +68,17 @@ def calc_weighted_revisions_index(pd_revision_data: pd.DataFrame) -> list[float]
         else:
             index_30 = 0
 
-        revision_body = 2 * index_7 + index_30
-        revision_weighted = round(revision_body / 3, 2)
+        revision_body = REVISION_WEIGHT_SHORT * index_7 + index_30
+        revision_weighted = round(revision_body / REVISION_WEIGHT_DIVISOR, FLOAT_PRECISION)
         list_revision_index.append(revision_weighted)
 
     return list_revision_index
 
 
-def process_float_list(input_list: list) -> list:
+def process_float_list(input_list: list[float]) -> list[float]:
     """Round all floats in a list to 2 decimal places if all elements are floats."""
     if all(isinstance(x, float) for x in input_list):
-        return [round(x, 2) for x in input_list]
+        return [round(x, FLOAT_PRECISION) for x in input_list]
     return input_list
 
 
@@ -81,23 +94,25 @@ def calc_delta_days(int_date_1: int, int_date_2: Optional[int] = None) -> int:
     return (dt_2 - dt_1).days
 
 
-def safe_get_float(info: dict, key: str) -> float | str:
+def safe_get_float(info: dict[str, object], key: str) -> float | str:
     """Safely get a float value from a dict, rounding to 2 decimals."""
     value = info.get(key)
-    if isinstance(value, float):
-        return round(value, 2)
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return round(float(value), FLOAT_PRECISION)
     return ''
 
 
-def safe_get_int(info: dict, key: str) -> int | str:
-    """Safely get an int value from a dict."""
+def safe_get_int(info: dict[str, object], key: str) -> int | str:
+    """Safely get an int value from a dict, converting float if needed."""
     value = info.get(key)
     if isinstance(value, int):
         return value
+    if isinstance(value, float):
+        return int(value)
     return ''
 
 
-def safe_get_str(info: dict, key: str) -> str:
+def safe_get_str(info: dict[str, object], key: str) -> str:
     """Safely get a string value from a dict."""
     value = info.get(key)
     if isinstance(value, str):
@@ -111,13 +126,13 @@ class MyYFinance:
         # Tuple index
         self._index_tuple: myTuple.MyTuple = myTuple.MyTuple
 
-        # Output dicts
-        self._dict_static_watch_list_data: dict[str, str | bool | None] = {}
-        self._dict_performance_watch_list_data: dict[str, str | int | float | None] = {}
-        self._dict_analyst_watch_list_data: dict[str, str | int | float | None] = {}
-        self._dict_fundamentals_watch_list_data: dict[str, str | int | float | None] = {}
-        self._dict_derivate_watch_list_data: dict[str, str | int | float | None] = {}
-        self._dict_calendar_watch_list_data: dict[str, str | int | None] = {}
+        # Output dicts (will be initialized from definitions at end of __init__)
+        self._dict_static_watch_list_data: dict[str, str | bool | None]
+        self._dict_performance_watch_list_data: dict[str, str | int | float | None]
+        self._dict_analyst_watch_list_data: dict[str, str | int | float | None]
+        self._dict_fundamentals_watch_list_data: dict[str, str | int | float | None]
+        self._dict_derivate_watch_list_data: dict[str, str | int | float | None]
+        self._dict_calendar_watch_list_data: dict[str, str | int | None]
 
         # Caching flags per watch list category
         self._cache_static: bool = False
@@ -412,7 +427,7 @@ class MyYFinance:
     def _calc_momentum(diff: float | str, base: float | str) -> float | str:
         """Calculate momentum percentage: (diff / base) * 100."""
         if isinstance(diff, float) and isinstance(base, float) and base > 0:
-            return round((diff / base) * 100, 2)
+            return round((diff / base) * 100, FLOAT_PRECISION)
         return ''
 
     def _get_quote_performance_watch_list_data_from_yfinance(self) -> None:
@@ -452,9 +467,7 @@ class MyYFinance:
 
         # Interday momentum: (dayHigh - currentPrice) / currentPrice * 100
         self._float_quote_interday_momentum = self._calc_momentum(
-            self._float_quote_day_high, self._float_quote_current_price)
-        if isinstance(self._float_quote_interday_momentum, str):
-            self._float_quote_interday_momentum = ''
+            self._float_quote_day_high - self._float_quote_current_price, self._float_quote_current_price)
         perf[pwl.TUPLE_PERFORMANCE_WATCH_LIST_INTERDAY_MOMENTUM[idx]] = self._float_quote_interday_momentum
 
         self._float_quote_day_low = safe_get_float(info, 'dayLow')
@@ -496,7 +509,7 @@ class MyYFinance:
         if isinstance(self._int_quote_average_volume, int) and isinstance(self._int_quote_volume, int):
             if self._int_quote_average_volume > 0:
                 self._float_quote_relative_volume = round(
-                    float(self._int_quote_volume) / self._int_quote_average_volume, 2)
+                    float(self._int_quote_volume) / self._int_quote_average_volume, FLOAT_PRECISION)
             else:
                 self._float_quote_relative_volume = ''
         else:
@@ -511,7 +524,7 @@ class MyYFinance:
         if isinstance(self._int_quote_average_volume_10_days, int) and isinstance(self._int_quote_volume, int):
             if self._int_quote_average_volume_10_days > 0:
                 self._float_quote_relative_volume_10_days = round(
-                    float(self._int_quote_volume) / self._int_quote_average_volume_10_days, 2)
+                    float(self._int_quote_volume) / self._int_quote_average_volume_10_days, FLOAT_PRECISION)
             else:
                 self._float_quote_relative_volume_10_days = ''
         else:
@@ -621,7 +634,7 @@ class MyYFinance:
         # Upside potential
         if (isinstance(self._current_price, float) and isinstance(self._target_mean_price, float)
                 and self._current_price != 0):
-            self._upside_potential = round(self._target_mean_price / self._current_price - 1, 2)
+            self._upside_potential = round(self._target_mean_price / self._current_price - 1, FLOAT_PRECISION)
         else:
             self._upside_potential = ''
         analyst[awl.TUPLE_ANALYST_WATCH_LIST_UPSIDE_POTENTIAL[idx]] = self._upside_potential
@@ -630,7 +643,7 @@ class MyYFinance:
         if (isinstance(self._target_high_price, float) and isinstance(self._target_low_price, float)
                 and isinstance(self._current_price, float) and self._current_price < self._target_high_price):
             self._risk_reward_ratio = round(
-                (self._current_price - self._target_low_price) / (self._target_high_price - self._current_price), 2)
+                (self._current_price - self._target_low_price) / (self._target_high_price - self._current_price), FLOAT_PRECISION)
         else:
             self._risk_reward_ratio = ''
         analyst[awl.TUPLE_ANALYST_WATCH_LIST_RISK_REWARD_RATIO[idx]] = self._risk_reward_ratio
@@ -639,7 +652,7 @@ class MyYFinance:
         if (isinstance(self._target_high_price, float) and isinstance(self._target_low_price, float)
                 and isinstance(self._target_mean_price, float) and self._target_mean_price > 0):
             self._analyst_dispersion = round(
-                (self._target_high_price - self._target_low_price) / self._target_mean_price, 2)
+                (self._target_high_price - self._target_low_price) / self._target_mean_price, FLOAT_PRECISION)
         else:
             self._analyst_dispersion = ''
         analyst[awl.TUPLE_ANALYST_WATCH_LIST_ANALYST_DISPERSION[idx]] = self._analyst_dispersion
@@ -661,11 +674,14 @@ class MyYFinance:
                 if self._list_revision_index:
                     # Classify revisions into -2, -1, 1, 2 buckets
                     classified = [
-                        -2 if x < -0.5 else (-1 if x < 0 else (1 if x < 0.5 else 2))
+                        -2 if x < REVISION_THRESHOLD_NEGATIVE_HIGH
+                        else (-1 if x < REVISION_THRESHOLD_NEGATIVE_LOW
+                              else (1 if x < REVISION_THRESHOLD_POSITIVE_HIGH
+                                    else 2))
                         for x in self._list_revision_index
                     ]
                     # Apply weighting
-                    weighted = [a * b for a, b in zip(classified, [2, 2, 1, 1])]
+                    weighted = [a * b for a, b in zip(classified, [REVISION_WEIGHT_SHORT, REVISION_WEIGHT_SHORT, REVISION_WEIGHT_LONG, REVISION_WEIGHT_LONG])]
                     self._int_revision_trend_credit = sum(weighted)
 
         # Set revision index and trend
@@ -712,7 +728,7 @@ class MyYFinance:
         # PEG ratio
         if (isinstance(self._trailing_pe, float) and isinstance(self._forward_pe, float)
                 and self._forward_pe != 0.0):
-            self._price_to_earning_to_growth = round(self._trailing_pe / self._forward_pe, 2)
+            self._price_to_earning_to_growth = round(self._trailing_pe / self._forward_pe, FLOAT_PRECISION)
         else:
             self._price_to_earning_to_growth = ''
         fund[fwl.TUPLE_FUNDAMENTALS_WATCH_LIST_PRICE_TO_EARNING_TO_GROWTH[idx]] = (
@@ -768,19 +784,19 @@ class MyYFinance:
         # Dividend yield ratio
         if isinstance(self._five_year_ave_dividend_yield, float) and self._five_year_ave_dividend_yield > 0:
             if isinstance(self._dividend_yield, float):
-                self._ratio_dividend_yield = round(self._dividend_yield / self._five_year_ave_dividend_yield, 2)
+                self._ratio_dividend_yield = round(self._dividend_yield / self._five_year_ave_dividend_yield, FLOAT_PRECISION)
             else:
                 self._ratio_dividend_yield = ''
         else:
             self._ratio_dividend_yield = ''
         fund[fwl.TUPLE_FUNDAMENTALS_WATCH_LIST_RATIO_DIVIDEND_YIELD[idx]] = self._ratio_dividend_yield
 
-        # Ex-dividend date
-        self._ex_dividend_date = info.get('exDividendDate', '')
-        fund[fwl.TUPLE_FUNDAMENTALS_WATCH_LIST_EX_DIVIDED_DATE[idx]] = self._ex_dividend_date
+        # Ex-dividend date (may be int timestamp or datetime object)
+        ex_div_raw = info.get('exDividendDate', '')
+        fund[fwl.TUPLE_FUNDAMENTALS_WATCH_LIST_EX_DIVIDED_DATE[idx]] = ex_div_raw
 
-        if isinstance(self._ex_dividend_date, int):
-            self._ex_dividend_delta_date = min(calc_delta_days(self._ex_dividend_date), 365)
+        if isinstance(ex_div_raw, int):
+            self._ex_dividend_delta_date = min(calc_delta_days(ex_div_raw), MAX_DELTA_DAYS)
         else:
             self._ex_dividend_delta_date = ''
         fund[fwl.TUPLE_FUNDAMENTALS_WATCH_LIST_EX_DIVIDED_DELTA_DATE[idx]] = self._ex_dividend_delta_date
@@ -814,7 +830,7 @@ class MyYFinance:
         # Short percent of float
         if isinstance(self._float_shares, int) and isinstance(self._shares_short, int):
             if self._float_shares > 0:
-                self._short_percent_of_float = round(self._shares_short * 100 / self._float_shares, 2)
+                self._short_percent_of_float = round(self._shares_short * 100 / self._float_shares, FLOAT_PRECISION)
             else:
                 self._short_percent_of_float = ''
         else:
@@ -834,7 +850,7 @@ class MyYFinance:
         if isinstance(self._shares_short_prior_month, int) and isinstance(self._shares_short, int):
             if self._shares_short_prior_month > 0:
                 self._short_percent_change = round(
-                    (self._shares_short / self._shares_short_prior_month - 1) * 100, 2)
+                    (self._shares_short / self._shares_short_prior_month - 1) * 100, FLOAT_PRECISION)
             else:
                 self._short_percent_change = ''
         else:
@@ -947,17 +963,10 @@ class MyYFinance:
 
 if __name__ == "__main__":
     my_y_finance = MyYFinance()
-    str_isin = 'US0378331005'
-    my_y_finance.set_actual_quote_isin(str_isin)
-    print(f' ---- the static information is: {my_y_finance.get_actual_quote_dict_static_watch_list_data} ----')
-    print('-------------------------------------------------')
-    print(f' ---- the performance information is: {my_y_finance.get_actual_quote_dict_performance_watch_list_data} ----')
-    print('-------------------------------------------------')
-    print(f' ---- the analyst information is: {my_y_finance.get_actual_quote_dict_analyst_watch_list_data} ----')
-    print('-------------------------------------------------')
-    print(f' ---- the fundamental information is: {my_y_finance.get_actual_quote_dict_fundamentals_watch_list_data} ----')
-    print('-------------------------------------------------')
-    print(f' ---- the derivate information is: {my_y_finance.get_actual_quote_dict_derivate_watch_list_data} ----')
-    print('-------------------------------------------------')
-    print(f' ---- the calendar information is: {my_y_finance.get_actual_quote_dict_calendar_watch_list_data} ----')
-    print('-------------------------------------------------')
+    my_y_finance.set_actual_quote_isin('US0378331005')
+    print(my_y_finance.get_actual_quote_dict_static_watch_list_data)
+    print(my_y_finance.get_actual_quote_dict_performance_watch_list_data)
+    print(my_y_finance.get_actual_quote_dict_analyst_watch_list_data)
+    print(my_y_finance.get_actual_quote_dict_fundamentals_watch_list_data)
+    print(my_y_finance.get_actual_quote_dict_derivate_watch_list_data)
+    print(my_y_finance.get_actual_quote_dict_calendar_watch_list_data)
