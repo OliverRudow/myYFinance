@@ -466,8 +466,11 @@ class MyYFinance:
         perf[pwl.TUPLE_PERFORMANCE_WATCH_LIST_DAY_HIGH[idx]] = self._float_quote_day_high
 
         # Interday momentum: (dayHigh - currentPrice) / currentPrice * 100
-        self._float_quote_interday_momentum = self._calc_momentum(
-            self._float_quote_day_high - self._float_quote_current_price, self._float_quote_current_price)
+        if isinstance(self._float_quote_day_high, float) and isinstance(self._float_quote_current_price, float):
+            self._float_quote_interday_momentum = self._calc_momentum(
+                self._float_quote_day_high - self._float_quote_current_price, self._float_quote_current_price)
+        else:
+            self._float_quote_interday_momentum = ''
         perf[pwl.TUPLE_PERFORMANCE_WATCH_LIST_INTERDAY_MOMENTUM[idx]] = self._float_quote_interday_momentum
 
         self._float_quote_day_low = safe_get_float(info, 'dayLow')
@@ -963,7 +966,7 @@ class MyYFinance:
 
 if __name__ == "__main__":
     my_y_finance = MyYFinance()
-    my_y_finance.set_actual_quote_isin('US0378331005')
+    my_y_finance.set_actual_quote_isin('US0640581007')
     print(my_y_finance.get_actual_quote_dict_static_watch_list_data)
     print(my_y_finance.get_actual_quote_dict_performance_watch_list_data)
     print(my_y_finance.get_actual_quote_dict_analyst_watch_list_data)
